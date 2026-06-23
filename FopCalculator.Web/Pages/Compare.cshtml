@@ -1,0 +1,370 @@
+﻿@page
+@model FopCalculator.Web.Pages.CompareModel
+@{
+    ViewData["Title"] = $"Порівняння груп ФОП {ViewData["CurrentYear"]} — 1, 2, 3 група єдиного податку";
+    ViewData["Description"] = "Порівняння 1, 2 та 3 групи ФОП. Яка група вигідніша для вашого доходу? Розрахунок єдиного податку та ЄСВ.";
+}
+
+<div x-data="compareCalc(@Model.InitialIncome)">
+
+    <div class="mb-10 text-center">
+        <h1 class="text-3xl md:text-4xl font-bold mb-3 text-white">Порівняння груп ФОП @ViewData["CurrentYear"]</h1>
+        <p class="text-[#9CA3AF] text-lg">Введіть дохід і побачте, яка група вигідніша</p>
+    </div>
+
+    <div class="max-w-md mx-auto mb-10">
+        <div class="bg-[#162137] rounded-2xl p-6 border border-[#23314B] shadow-lg">
+            <label class="block text-sm text-[#9CA3AF] mb-3 text-center">Річний дохід (грн)</label>
+            <input type="number"
+                   x-model.number="income"
+                   @@input="calculate()"
+                   placeholder="500000"
+                   class="w-full bg-[#0A0F1C] border border-[#23314B] rounded-xl px-4 py-4 text-white text-2xl font-bold text-center focus:outline-none focus:border-[#FFD600] focus:ring-1 focus:ring-[#FFD600] transition-all" />
+            <p class="text-center text-xs text-[#6B7280] mt-3 font-medium uppercase tracking-wide">
+                ≈ <span x-text="formatMoney(income / 12)"></span> / місяць
+            </p>
+        </div>
+    </div>
+
+    <template x-if="result">
+        <div class="mb-8" x-transition>
+            <div class="bg-[#00D07E]/10 border border-[#00D07E]/30 rounded-2xl p-6 text-center shadow-sm">
+                <div class="text-sm text-[#9CA3AF] mb-2 font-medium">НАЙВИГІДНІША ГРУПА ДЛЯ ВАШОГО ДОХОДУ</div>
+                <div class="text-3xl font-black text-[#00D07E]"
+                     x-text="'🏆 ' + result.bestGroupNumber + ' група ФОП'"></div>
+            </div>
+        </div>
+    </template>
+
+    <template x-if="result">
+        <div class="grid md:grid-cols-3 gap-6 mb-10">
+
+            <div :class="result.bestGroupNumber === 1 ? 'border-[#00D07E] ring-2 ring-[#00D07E]/20' : 'border-[#23314B]'"
+                 class="bg-[#162137] rounded-2xl p-6 border shadow-lg relative flex flex-col transition-all duration-300">
+                <div x-show="result.bestGroupNumber === 1"
+                     class="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#00D07E] text-[#0A0F1C] text-xs font-bold px-4 py-1 rounded-full shadow-sm">
+                    НАЙКРАЩЕ
+                </div>
+                <div class="text-center mb-6">
+                    <div class="text-4xl mb-2">1️⃣</div>
+                    <h2 class="text-xl font-bold text-white">1 група</h2>
+                    <p class="text-xs text-[#6B7280] mt-1">
+                        ліміт <span x-text="formatMoney(result.group1.maxAllowedIncome)"></span>
+                    </p>
+                </div>
+                <template x-if="result.group1.isWithinLimit">
+                    <div class="space-y-3 flex-grow flex flex-col">
+                        <div class="bg-[#0A0F1C] rounded-xl p-4 border border-[#23314B]">
+                            <div class="text-xs text-[#9CA3AF] mb-2">Фіксований податок</div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="text-[#6B7280]">/ міс</span>
+                                <span class="text-[#FFD600] font-bold" x-text="formatMoney(result.group1.unifiedTaxMonthly)"></span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-[#6B7280]">/ рік</span>
+                                <span class="text-[#FFD600] font-bold" x-text="formatMoney(result.group1.unifiedTaxAnnual)"></span>
+                            </div>
+                        </div>
+                        <div class="bg-[#0A0F1C] rounded-xl p-4 border border-[#23314B]">
+                            <div class="flex justify-between text-sm mb-2">
+                                <span class="text-[#9CA3AF]">ЄСВ / рік</span>
+                                <span class="text-white" x-text="formatMoney(result.group1.esvAnnual)"></span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-[#9CA3AF]">ВЗ / рік</span>
+                                <span class="text-white" x-text="formatMoney(result.group1.militaryTaxAnnual)"></span>
+                            </div>
+                        </div>
+                        <div class="bg-[#2A5CFF]/10 border border-[#2A5CFF]/30 rounded-xl p-4 mt-auto">
+                            <div class="flex justify-between text-sm mb-2">
+                                <span class="text-[#9CA3AF]">Всього податків</span>
+                                <span class="text-[#FF3B30] font-bold" x-text="'— ' + formatMoney(result.group1.totalTaxAnnual)"></span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-white font-medium">Чистий дохід</span>
+                                <span class="text-[#00D07E] font-black text-lg" x-text="formatMoney(result.group1.netIncome)"></span>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+                <template x-if="!result.group1.isWithinLimit">
+                    <div class="bg-[#FF3B30]/10 border border-[#FF3B30]/30 rounded-xl p-4 text-center mt-auto">
+                        <div class="text-[#FF3B30] font-bold text-sm">⚠️ Перевищено ліміт</div>
+                    </div>
+                </template>
+            </div>
+
+            <div :class="result.bestGroupNumber === 2 ? 'border-[#00D07E] ring-2 ring-[#00D07E]/20' : 'border-[#23314B]'"
+                 class="bg-[#162137] rounded-2xl p-6 border shadow-lg relative flex flex-col transition-all duration-300">
+                <div x-show="result.bestGroupNumber === 2"
+                     class="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#00D07E] text-[#0A0F1C] text-xs font-bold px-4 py-1 rounded-full shadow-sm">
+                    НАЙКРАЩЕ
+                </div>
+                <div class="text-center mb-6">
+                    <div class="text-4xl mb-2">2️⃣</div>
+                    <h2 class="text-xl font-bold text-white">2 група</h2>
+                    <p class="text-xs text-[#6B7280] mt-1">
+                        ліміт <span x-text="formatMoney(result.group2.maxAllowedIncome)"></span>
+                    </p>
+                </div>
+                <template x-if="result.group2.isWithinLimit">
+                    <div class="space-y-3 flex-grow flex flex-col">
+                        <div class="bg-[#0A0F1C] rounded-xl p-4 border border-[#23314B]">
+                            <div class="text-xs text-[#9CA3AF] mb-2">Фіксований податок</div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="text-[#6B7280]">/ міс</span>
+                                <span class="text-[#FFD600] font-bold" x-text="formatMoney(result.group2.unifiedTaxMonthly)"></span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-[#6B7280]">/ рік</span>
+                                <span class="text-[#FFD600] font-bold" x-text="formatMoney(result.group2.unifiedTaxAnnual)"></span>
+                            </div>
+                        </div>
+                        <div class="bg-[#0A0F1C] rounded-xl p-4 border border-[#23314B]">
+                            <div class="flex justify-between text-sm mb-2">
+                                <span class="text-[#9CA3AF]">ЄСВ / рік</span>
+                                <span class="text-white" x-text="formatMoney(result.group2.esvAnnual)"></span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-[#9CA3AF]">ВЗ / рік</span>
+                                <span class="text-white" x-text="formatMoney(result.group2.militaryTaxAnnual)"></span>
+                            </div>
+                        </div>
+                        <div class="bg-[#2A5CFF]/10 border border-[#2A5CFF]/30 rounded-xl p-4 mt-auto">
+                            <div class="flex justify-between text-sm mb-2">
+                                <span class="text-[#9CA3AF]">Всього податків</span>
+                                <span class="text-[#FF3B30] font-bold" x-text="'— ' + formatMoney(result.group2.totalTaxAnnual)"></span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-white font-medium">Чистий дохід</span>
+                                <span class="text-[#00D07E] font-black text-lg" x-text="formatMoney(result.group2.netIncome)"></span>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+                <template x-if="!result.group2.isWithinLimit">
+                    <div class="bg-[#FF3B30]/10 border border-[#FF3B30]/30 rounded-xl p-4 text-center mt-auto">
+                        <div class="text-[#FF3B30] font-bold text-sm">⚠️ Перевищено ліміт</div>
+                    </div>
+                </template>
+            </div>
+
+            <div :class="result.bestGroupNumber === 3 ? 'border-[#00D07E] ring-2 ring-[#00D07E]/20' : 'border-[#23314B]'"
+                 class="bg-[#162137] rounded-2xl p-6 border shadow-lg relative flex flex-col transition-all duration-300">
+                <div x-show="result.bestGroupNumber === 3"
+                     class="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#00D07E] text-[#0A0F1C] text-xs font-bold px-4 py-1 rounded-full shadow-sm">
+                    НАЙКРАЩЕ
+                </div>
+                <div class="text-center mb-6">
+                    <div class="text-4xl mb-2">3️⃣</div>
+                    <h2 class="text-xl font-bold text-white">3 група</h2>
+                    <p class="text-xs text-[#6B7280] mt-1">
+                        ліміт <span x-text="formatMoney(result.group3.maxAllowedIncome)"></span>
+                    </p>
+                </div>
+                <template x-if="result.group3.isWithinLimit">
+                    <div class="space-y-3 flex-grow flex flex-col">
+                        <div class="bg-[#0A0F1C] rounded-xl p-4 border border-[#23314B]">
+                            <div class="text-xs text-[#9CA3AF] mb-2">5% від доходу</div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="text-[#6B7280]">/ міс</span>
+                                <span class="text-[#FFD600] font-bold" x-text="formatMoney(result.group3.unifiedTaxMonthly)"></span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-[#6B7280]">/ рік</span>
+                                <span class="text-[#FFD600] font-bold" x-text="formatMoney(result.group3.unifiedTaxAnnual)"></span>
+                            </div>
+                        </div>
+                        <div class="bg-[#0A0F1C] rounded-xl p-4 border border-[#23314B]">
+                            <div class="flex justify-between text-sm mb-2">
+                                <span class="text-[#9CA3AF]">ЄСВ / рік</span>
+                                <span class="text-white" x-text="formatMoney(result.group3.esvAnnual)"></span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-[#9CA3AF]">ВЗ / рік</span>
+                                <span class="text-white" x-text="formatMoney(result.group3.militaryTaxAnnual)"></span>
+                            </div>
+                        </div>
+                        <div class="bg-[#2A5CFF]/10 border border-[#2A5CFF]/30 rounded-xl p-4 mt-auto">
+                            <div class="flex justify-between text-sm mb-2">
+                                <span class="text-[#9CA3AF]">Всього податків</span>
+                                <span class="text-[#FF3B30] font-bold" x-text="'— ' + formatMoney(result.group3.totalTaxAnnual)"></span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-white font-medium">Чистий дохід</span>
+                                <span class="text-[#00D07E] font-black text-lg" x-text="formatMoney(result.group3.netIncome)"></span>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+        </div>
+    </template>
+
+    <template x-if="result">
+        <div class="bg-[#162137] rounded-2xl p-6 md:p-8 border border-[#23314B] shadow-lg mb-10">
+            <h2 class="text-lg font-semibold mb-6 text-white flex items-center gap-2">
+                <span class="text-[#2A5CFF]">📈</span> Візуалізація
+            </h2>
+            <div class="w-full h-[300px] md:h-[400px]">
+                <canvas id="compareChart"></canvas>
+            </div>
+        </div>
+    </template>
+
+    <div class="bg-[#162137] rounded-2xl p-6 md:p-8 border border-[#23314B] shadow-lg">
+        <h2 class="text-lg font-semibold mb-6 text-white flex items-center gap-2">
+            <span class="text-[#FFD600]">❓</span> Часті запитання
+        </h2>
+        <div class="space-y-6 text-sm">
+            <div class="pb-4 border-b border-[#23314B]">
+                <div class="font-bold text-white mb-2 text-[15px]">Чим відрізняється 1 від 2 групи ФОП?</div>
+                <div class="text-[#9CA3AF] leading-relaxed">1 група — тільки роздрібна торгівля на ринку та побутові послуги населенню. 2 група — ширший перелік видів діяльності включно з наданням послуг платникам єдиного податку.</div>
+            </div>
+            <div class="pb-4 border-b border-[#23314B]">
+                <div class="font-bold text-white mb-2 text-[15px]">Коли вигідніша 1 або 2 група?</div>
+                <div class="text-[#9CA3AF] leading-relaxed">При великому доході фіксований податок 1-2 груп вигідніший ніж 5% з доходу у 3 групі. Чим більший ваш дохід в межах ліміту — тим вигідніші 1-2 групи.</div>
+            </div>
+            <div class="pb-4 border-b border-[#23314B]">
+                <div class="font-bold text-white mb-2 text-[15px]">Що таке ЄСВ і чи обов'язково його платити?</div>
+                <div class="text-[#9CA3AF] leading-relaxed">ЄСВ (єдиний соціальний внесок) — обов'язковий для більшості ФОП. Сплата ЄСВ дає право на пенсію та лікарняні. У @ViewData["CurrentYear"] році це 22% від мінімальної зарплати.</div>
+            </div>
+            <div>
+                <div class="font-bold text-white mb-2 text-[15px]">Чи платять ФОП військовий збір?</div>
+                <div class="text-[#9CA3AF] leading-relaxed">Так. Для 1 і 2 груп це фіксована сума 10% від мінімальної зарплати, для 3 групи — 1% від фактичного доходу.</div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+    <script>
+        function compareCalc(initialIncome) {
+            return {
+                income: initialIncome || 500000,
+                result: null,
+                chart: null,
+
+                async calculate() {
+                    if (!this.income || this.income <= 0) {
+                        this.result = null;
+                        return;
+                    }
+                    const params = new URLSearchParams({
+                        annualIncome: this.income,
+                        year: @ViewData["CurrentYear"]
+                    });
+                    const r = await fetch(`/api/fop/compare?${params}`);
+                    this.result = await r.json();
+                    this.$nextTick(() => this.renderChart());
+                },
+
+                renderChart() {
+                    const ctx = document.getElementById('compareChart');
+                    if (!ctx || !this.result) return;
+                    if (this.chart) this.chart.destroy();
+
+                    const groups = ['1 група', '2 група', '3 група'];
+                    const data = [this.result.group1, this.result.group2, this.result.group3];
+
+                    this.chart = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: groups,
+                            datasets: [
+                                {
+                                    label: 'Чистий дохід',
+                                    data: data.map(g => g.isWithinLimit ? g.netIncome : 0),
+                                    backgroundColor: '#00D07E',
+                                    borderRadius: 6,
+                                    borderSkipped: false,
+                                    barPercentage: 0.6
+                                },
+                                {
+                                    label: 'Всього податків',
+                                    data: data.map(g => g.isWithinLimit ? g.totalTaxAnnual : 0),
+                                    backgroundColor: '#FF3B30',
+                                    borderRadius: 6,
+                                    borderSkipped: false,
+                                    barPercentage: 0.6
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    labels: { color: '#9CA3AF', font: { family: 'Inter', size: 13 } }
+                                },
+                                tooltip: {
+                                    backgroundColor: '#0A0F1C',
+                                    titleColor: '#FFFFFF',
+                                    bodyColor: '#9CA3AF',
+                                    borderColor: '#23314B',
+                                    borderWidth: 1,
+                                    padding: 12,
+                                    callbacks: {
+                                        label: (ctx) => ctx.dataset.label + ': ' + this.formatMoney(ctx.parsed.y)
+                                    }
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    ticks: { color: '#9CA3AF', font: { family: 'Inter' } },
+                                    grid: { display: false }
+                                },
+                                y: {
+                                    ticks: {
+                                        color: '#6B7280',
+                                        font: { family: 'Inter' },
+                                        callback: (val) => (val / 1000).toFixed(0) + 'k'
+                                    },
+                                    grid: { color: '#23314B', drawBorder: false }
+                                }
+                            }
+                        }
+                    });
+                },
+
+                formatMoney(val) {
+                    if (val === null || val === undefined) return '—';
+                    return new Intl.NumberFormat('uk-UA', {
+                        style: 'currency', currency: 'UAH', maximumFractionDigits: 0
+                    }).format(val);
+                },
+
+                init() { this.calculate(); }
+            }
+        }
+    </script>
+}
+
+@section SchemaOrg {
+    <script type="application/ld+json">
+        {
+            "@@context": "https://schema.org",
+            "@@type": "FAQPage",
+            "mainEntity": [
+                {
+                    "@@type": "Question",
+                    "name": "Яка група ФОП вигідніша у @ViewData["CurrentYear"] році?",
+                    "acceptedAnswer": {
+                        "@@type": "Answer",
+                        "text": "Це залежить від вашого доходу. При доході до ліміту 1 або 2 групи — вони вигідніші через фіксований податок. При більшому доході — краща 3 група з 5% від доходу. Використовуйте калькулятор для порівняння."
+                    }
+                },
+                {
+                    "@@type": "Question",
+                    "name": "Який ліміт доходу для ФОП 3 групи у @ViewData["CurrentYear"] році?",
+                    "acceptedAnswer": {
+                        "@@type": "Answer",
+                        "text": "Ліміт доходу для ФОП 3 групи у @ViewData["CurrentYear"] році — 1167 мінімальних зарплат. При мінімальній зарплаті 8647 грн це складає понад 10 мільйонів гривень на рік."
+                    }
+                }
+            ]
+        }
+    </script>
+}

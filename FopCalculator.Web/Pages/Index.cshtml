@@ -1,0 +1,309 @@
+﻿@page
+@model FopCalculator.Web.Pages.IndexModel
+@{
+    ViewData["Title"] = $"ФОП Калькулятор {ViewData["CurrentYear"]} — Розрахунок єдиного податку";
+    ViewData["Description"] = "Безкоштовний калькулятор єдиного податку для ФОП 1, 2, 3 групи. Розрахунок ЄСВ та порівняння груп.";
+}
+
+<div x-data="calculator()" x-init="init()">
+
+    <div class="mb-12 text-center">
+        <h1 class="text-3xl md:text-5xl font-extrabold mb-4 text-white tracking-tight">Калькулятор єдиного податку</h1>
+        <p class="text-[#9CA3AF] text-lg max-w-2xl mx-auto">Дізнайтеся точну суму податків, яку сплатить ваш ФОП у @ViewData["CurrentYear"] році за актуальним законодавством.</p>
+    </div>
+
+    <div class="grid lg:grid-cols-2 gap-8">
+
+        <div class="bg-[#162137] rounded-3xl p-6 md:p-8 border border-[#23314B] shadow-2xl relative overflow-hidden">
+            <div class="absolute -top-20 -right-20 w-40 h-40 bg-[#FFD600] rounded-full mix-blend-screen filter blur-[100px] opacity-10"></div>
+
+            <h3 class="text-xl font-bold mb-8 text-white flex items-center gap-3">
+                <span class="bg-[#23314B] p-2 rounded-lg text-[#FFD600]">⚙️</span> Параметри
+            </h3>
+
+            <div class="mb-8">
+                <label class="block text-sm font-medium text-[#9CA3AF] mb-3">Група ФОП</label>
+                <div class="grid grid-cols-3 gap-3">
+                    <template x-for="g in [1,2,3]">
+                        <button :class="group === g
+                                ? 'bg-[#FFD600] text-[#0A0F1C] font-bold shadow-[0_4px_14px_0_rgba(255,214,0,0.2)]'
+                                : 'bg-[#0A0F1C] text-[#9CA3AF] border border-[#23314B] hover:border-[#4B5E82] hover:text-white'"
+                                class="py-3.5 rounded-xl text-sm transition-all duration-200"
+                                @@click="group = g; calculate()">
+                            <span x-text="g + ' група'"></span>
+                        </button>
+                    </template>
+                </div>
+            </div>
+
+            <div class="mb-8">
+                <div class="flex justify-between items-end mb-3">
+                    <label class="block text-sm font-medium text-[#9CA3AF]">Річний дохід</label>
+                    <span class="text-xs text-[#6B7280] font-medium uppercase tracking-wide">
+                        ≈ <span x-text="formatMoney(income/12)"></span> / міс
+                    </span>
+                </div>
+
+                <div class="relative group">
+                    <div class="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                        <span class="text-[#6B7280] text-xl font-medium group-focus-within:text-[#FFD600] transition-colors">₴</span>
+                    </div>
+                    <input type="number"
+                           x-model.number="income"
+                           @@input="calculate()"
+                           placeholder="500 000"
+                           class="w-full bg-[#0A0F1C] border border-[#23314B] rounded-xl pl-12 pr-4 py-4 text-white text-xl font-bold focus:outline-none focus:border-[#FFD600] focus:ring-1 focus:ring-[#FFD600] transition-all" />
+                </div>
+            </div>
+
+            <div class="mb-8" x-show="group === 3" x-collapse x-cloak>
+                <label class="block text-sm font-medium text-[#9CA3AF] mb-3">Система оподаткування</label>
+                <div class="grid grid-cols-2 gap-3">
+                    <button :class="taxSystem === '5%'
+                            ? 'bg-[#FFD600] text-[#0A0F1C] font-bold'
+                            : 'bg-[#0A0F1C] text-[#9CA3AF] border border-[#23314B] hover:border-[#4B5E82] hover:text-white'"
+                            class="py-3.5 rounded-xl text-sm transition-all duration-200"
+                            @@click="taxSystem = '5%'; calculate()">
+                        5% без ПДВ
+                    </button>
+                    <button :class="taxSystem === '3%'
+                            ? 'bg-[#FFD600] text-[#0A0F1C] font-bold'
+                            : 'bg-[#0A0F1C] text-[#9CA3AF] border border-[#23314B] hover:border-[#4B5E82] hover:text-white'"
+                            class="py-3.5 rounded-xl text-sm transition-all duration-200"
+                            @@click="taxSystem = '3%'; calculate()">
+                        3% + ПДВ
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3 mt-6 p-4 bg-[#0A0F1C] rounded-xl border border-[#23314B]">
+                <label class="relative flex items-center cursor-pointer">
+                    <input type="checkbox" x-model="payEsv" @@change="calculate()" class="sr-only peer">
+                    <div class="w-11 h-6 bg-[#23314B] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[#9CA3AF] peer-checked:after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#00D07E] border border-transparent"></div>
+                </label>
+                <div class="flex flex-col">
+                    <span class="text-sm font-medium text-white flex items-center gap-2">
+                        Сплачувати ЄСВ
+                        <div class="relative group cursor-help">
+                            <svg class="w-4 h-4 text-[#6B7280] hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-[#23314B] text-xs text-white rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 text-center shadow-xl">
+                                Сплата ЄСВ зараховується до вашого пенсійного стажу.
+                            </div>
+                        </div>
+                    </span>
+                    <span class="text-xs text-[#6B7280]">Впливає на пенсійний стаж</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-[#162137] rounded-3xl p-6 md:p-8 border border-[#23314B] shadow-2xl flex flex-col relative overflow-hidden">
+            <div class="absolute -bottom-20 -left-20 w-40 h-40 bg-[#00D07E] rounded-full mix-blend-screen filter blur-[100px] opacity-10"></div>
+
+            <h3 class="text-xl font-bold mb-8 text-white flex items-center gap-3 relative z-10">
+                <span class="bg-[#23314B] p-2 rounded-lg text-[#00D07E]">📊</span> Результат
+            </h3>
+
+            <template x-if="result">
+                <div class="space-y-4 flex-grow flex flex-col relative z-10">
+
+                    <div class="bg-[#0A0F1C] rounded-xl p-5 border border-[#23314B] hover:border-[#4B5E82] transition-colors">
+                        <div class="flex justify-between items-center mb-3">
+                            <span class="text-[#9CA3AF] text-sm">Єдиний податок <span class="text-[#6B7280] text-xs ml-1">/ міс</span></span>
+                            <span class="text-white font-bold" x-text="formatMoney(result.unifiedTaxMonthly)"></span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-[#9CA3AF] text-sm">Єдиний податок <span class="text-[#6B7280] text-xs ml-1">/ рік</span></span>
+                            <span class="text-white font-bold text-lg" x-text="formatMoney(result.unifiedTaxAnnual)"></span>
+                        </div>
+                    </div>
+
+                    <div class="bg-[#0A0F1C] rounded-xl p-5 border border-[#23314B] hover:border-[#4B5E82] transition-colors" x-show="payEsv" x-collapse x-cloak>
+                        <div class="flex justify-between items-center mb-3">
+                            <span class="text-[#9CA3AF] text-sm">ЄСВ <span class="text-[#6B7280] text-xs ml-1">/ міс</span></span>
+                            <span class="text-[#FFD600] font-bold" x-text="formatMoney(result.esvMonthly)"></span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-[#9CA3AF] text-sm">ЄСВ <span class="text-[#6B7280] text-xs ml-1">/ рік</span></span>
+                            <span class="text-[#FFD600] font-bold text-lg" x-text="formatMoney(result.esvAnnual)"></span>
+                        </div>
+                    </div>
+
+                    <div class="bg-[#0A0F1C] rounded-xl p-5 border border-[#23314B] hover:border-[#4B5E82] transition-colors">
+                        <div class="flex justify-between items-center mb-3">
+                            <span class="text-[#9CA3AF] text-sm">Військовий збір <span class="text-[#6B7280] text-xs ml-1">/ міс</span></span>
+                            <span class="text-[#FFD600] font-bold" x-text="formatMoney(result.militaryTaxMonthly)"></span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-[#9CA3AF] text-sm">Військовий збір <span class="text-[#6B7280] text-xs ml-1">/ рік</span></span>
+                            <span class="text-[#FFD600] font-bold text-lg" x-text="formatMoney(result.militaryTaxAnnual)"></span>
+                        </div>
+                    </div>
+
+                    <div class="bg-[#2A5CFF]/10 border border-[#2A5CFF]/30 rounded-2xl p-6 mt-auto">
+                        <div class="flex justify-between items-center mb-4">
+                            <span class="text-[#9CA3AF] font-medium">Всього податків / рік</span>
+                            <span class="text-[#FF3B30] font-bold text-xl" x-text="'— ' + formatMoney(result.totalTaxAnnual)"></span>
+                        </div>
+                        <div class="flex justify-between items-center mb-4">
+                            <span class="text-white font-bold text-lg">Чистий дохід / рік</span>
+                            <span class="text-[#00D07E] font-black text-2xl" x-text="formatMoney(result.netIncome)"></span>
+                        </div>
+                        <div class="flex justify-between items-center pt-4 border-t border-[#2A5CFF]/20">
+                            <span class="text-[#9CA3AF] text-sm flex items-center gap-2">
+                                Ефективна ставка
+                                <div class="relative group cursor-help">
+                                    <svg class="w-4 h-4 text-[#6B7280]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                    <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-[#23314B] text-xs text-white rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 text-center shadow-xl">
+                                        Відсоток, який податки складають від вашого загального доходу.
+                                    </div>
+                                </div>
+                            </span>
+                            <span class="text-[#2A5CFF] font-bold text-lg bg-[#2A5CFF]/20 px-3 py-1 rounded-lg" x-text="result.effectiveRate + '%'"></span>
+                        </div>
+                    </div>
+
+                    <div :class="result.isWithinLimit ? 'bg-[#00D07E]/10 border-[#00D07E]/30 text-[#00D07E]' : 'bg-[#FF3B30]/10 border-[#FF3B30]/30 text-[#FF3B30]'"
+                         class="rounded-xl p-4 border text-sm font-medium text-center transition-colors flex items-center justify-center gap-2">
+                        <span x-show="result.isWithinLimit">✅ Дохід в межах ліміту групи</span>
+                        <span x-show="!result.isWithinLimit">⚠️ Перевищено ліміт! Максимум: <span x-text="formatMoney(result.maxAllowedIncome)"></span></span>
+                    </div>
+
+                </div>
+            </template>
+
+            <template x-if="!result">
+                <div class="text-center text-[#6B7280] flex-grow flex flex-col items-center justify-center py-12 relative z-10">
+                    <div class="w-16 h-16 bg-[#0A0F1C] border border-[#23314B] rounded-2xl flex items-center justify-center mb-4 shadow-lg">
+                        <span class="text-3xl">🧮</span>
+                    </div>
+                    <p class="font-medium">Введіть дохід для розрахунку</p>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <div class="mt-12 text-center">
+        <button @@click="submitCompare()"
+                class="bg-white text-[#0A0F1C] hover:bg-[#F0F5FA] px-10 py-4 rounded-xl font-bold transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_25px_rgba(255,255,255,0.2)] hover:-translate-y-1 inline-flex items-center gap-2">
+            Порівняти всі групи
+            <svg class="w-5 h-5 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+        </button>
+    </div>
+
+</div>
+
+@section Scripts {
+    <script defer src="https://cdn.jsdelivr.net/npm/@@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        [x-cloak] {
+            display: none !important;
+        }
+    </style>
+    <script>
+        function calculator() {
+            return {
+                group: 3,
+                income: null,
+                taxSystem: '5%',
+                payEsv: true,
+                result: null,
+
+                async calculate() {
+                    if (!this.income || this.income <= 0) {
+                        this.result = null;
+                        return;
+                    }
+
+                    const params = new URLSearchParams({
+                        annualIncome: this.income,
+                        group: this.group,
+                        taxSystem: this.taxSystem === '5%' ? 0 : 1,
+                        payEsv: this.payEsv,
+                        year: @ViewData["CurrentYear"]
+                    });
+
+                    try {
+                        const response = await fetch(`/api/fop/calculate?${params}`);
+                        if (response.ok) {
+                            this.result = await response.json();
+                        }
+                    } catch (e) {
+                        console.error('Помилка розрахунку:', e);
+                    }
+                },
+
+                submitCompare() {
+                    const finalIncome = this.income || 500000;
+                    window.location.href = `/compare?income=${finalIncome}`;
+                },
+
+                formatMoney(val) {
+                    if (val === null || val === undefined || isNaN(val)) return '0 ₴';
+                    return new Intl.NumberFormat('uk-UA', {
+                        style: 'currency',
+                        currency: 'UAH',
+                        maximumFractionDigits: 0
+                    }).format(val).replace(/,/g, ' ');
+                },
+
+                init() {
+                }
+            }
+        }
+    </script>
+}
+
+@section SchemaOrg {
+    <script type="application/ld+json">
+        {
+            "@@context": "https://schema.org",
+            "@@type": "WebApplication",
+            "name": "ФОП Калькулятор @ViewData["CurrentYear"]",
+            "description": "Безкоштовний калькулятор єдиного податку для ФОП 1, 2, 3 групи. Розрахунок ЄСВ, військового збору та порівняння груп.",
+            "url": "@(HttpContext.Request.Scheme)://@(HttpContext.Request.Host)/",
+            "applicationCategory": "FinanceApplication",
+            "operatingSystem": "Web",
+            "offers": {
+                "@@type": "Offer",
+                "price": "0",
+                "priceCurrency": "UAH"
+            },
+            "inLanguage": "uk",
+            "dateModified": "@DateTime.UtcNow.ToString("yyyy-MM-dd")"
+        }
+    </script>
+
+    <script type="application/ld+json">
+        {
+            "@@context": "https://schema.org",
+            "@@type": "FAQPage",
+            "mainEntity": [
+                {
+                    "@@type": "Question",
+                    "name": "Скільки платить ФОП 3 групи у @ViewData["CurrentYear"] році?",
+                    "acceptedAnswer": {
+                        "@@type": "Answer",
+                        "text": "ФОП 3 групи сплачує 5% від доходу (єдиний податок), 22% від мінімальної зарплати (ЄСВ) та 1% від доходу (військовий збір). Введіть свій дохід у калькулятор для точного розрахунку."
+                    }
+                },
+                {
+                    "@@type": "Question",
+                    "name": "Яка різниця між ФОП 1 та 2 групи?",
+                    "acceptedAnswer": {
+                        "@@type": "Answer",
+                        "text": "ФОП 1 групи може займатися лише роздрібною торгівлею на ринку та побутовими послугами. ФОП 2 групи має ширший перелік дозволених видів діяльності. Обидві групи платять фіксований податок незалежно від доходу."
+                    }
+                },
+                {
+                    "@@type": "Question",
+                    "name": "Чи обов'язково платити ЄСВ ФОП?",
+                    "acceptedAnswer": {
+                        "@@type": "Answer",
+                        "text": "Так, більшість ФОП зобов'язані сплачувати ЄСВ. У @ViewData["CurrentYear"] році мінімальний розмір ЄСВ становить 22% від мінімальної зарплати щомісяця. Сплата ЄСВ зараховується до пенсійного стажу."
+                    }
+                }
+            ]
+        }
+    </script>
+}
+

@@ -1,0 +1,199 @@
+﻿<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="@ViewData["Description"]" />
+    <meta name="robots" content="index, follow" />
+
+    <title>@ViewData["Title"]</title>
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="@($"{Context.Request.Scheme}://{Context.Request.Host}{Context.Request.Path}")" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="@ViewData["Title"]" />
+    <meta property="og:description" content="@ViewData["Description"]" />
+    <meta property="og:url" content="@($"{Context.Request.Scheme}://{Context.Request.Host}{Context.Request.Path}")" />
+    <meta property="og:locale" content="uk_UA" />
+    <meta property="og:site_name" content="ФОП Калькулятор" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="@ViewData["Title"]" />
+    <meta name="twitter:description" content="@ViewData["Description"]" />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Schema.org JSON-LD (з кожної сторінки) -->
+    @await RenderSectionAsync("SchemaOrg", required: false)
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #05080F;
+            color: #FFFFFF;
+        }
+
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0A0F1C;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #23314B;
+            border-radius: 4px;
+        }
+
+            ::-webkit-scrollbar-thumb:hover {
+                background: #4B5E82;
+            }
+
+        .bg-grid-pattern {
+            background-size: 40px 40px;
+            background-image: linear-gradient(to right, rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.02) 1px, transparent 1px);
+            mask-image: linear-gradient(to bottom, transparent, black 10%, black 90%, transparent);
+            -webkit-mask-image: linear-gradient(to bottom, transparent, black 10%, black 90%, transparent);
+        }
+
+        @@keyframes blob {
+            0% {
+                transform: translate(0px, 0px) scale(1);
+            }
+
+            33% {
+                transform: translate(30px, -50px) scale(1.1);
+            }
+
+            66% {
+                transform: translate(-20px, 20px) scale(0.9);
+            }
+
+            100% {
+                transform: translate(0px, 0px) scale(1);
+            }
+        }
+
+        .animate-blob {
+            animation: blob 15s infinite alternate ease-in-out;
+        }
+
+        .animation-delay-2000 {
+            animation-delay: 2s;
+        }
+
+        .animation-delay-4000 {
+            animation-delay: 4s;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col relative overflow-x-hidden">
+
+    <div class="fixed inset-0 z-[-1] pointer-events-none">
+        <div class="absolute inset-0 bg-grid-pattern"></div>
+        <div class="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-[#2A5CFF] rounded-full mix-blend-screen filter blur-[120px] opacity-[0.15] animate-blob"></div>
+        <div class="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-[#00D07E] rounded-full mix-blend-screen filter blur-[150px] opacity-[0.12] animate-blob animation-delay-2000"></div>
+        <div class="absolute top-[40%] left-[50%] w-[400px] h-[400px] bg-[#FFD600] rounded-full mix-blend-screen filter blur-[150px] opacity-[0.08] animate-blob animation-delay-4000"></div>
+    </div>
+
+    <header class="bg-[#0A0F1C]/70 backdrop-blur-xl border-b border-[#23314B]/80 sticky top-0 z-50">
+        <div class="max-w-5xl mx-auto px-4 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
+            <a href="/" class="flex items-center gap-3 w-full md:w-auto justify-center md:justify-start hover:opacity-80 transition-opacity">
+                <div class="w-10 h-10 bg-[#FFD600] rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(255,214,0,0.2)]">
+                    <div class="w-0 h-0 border-l-[7px] border-r-[7px] border-b-[12px] border-transparent border-b-[#0A0F1C]"></div>
+                </div>
+                <div>
+                    <div class="text-[18px] font-bold text-white leading-none mb-1 tracking-wide">ФОП Калькулятор</div>
+                    <div class="text-[10px] text-[#00D07E] font-bold uppercase tracking-wider">Офіційні ставки @ViewData["CurrentYear"]</div>
+                </div>
+            </a>
+
+            @{
+                var path = ViewContext.RouteData.Values["page"]?.ToString();
+            }
+            <nav class="flex gap-1 bg-[#162137]/80 backdrop-blur-md p-1 rounded-xl border border-[#23314B]">
+                <a href="/" class="px-4 py-2 rounded-lg text-sm font-medium transition-all @(path == "/Index" ? "bg-[#2A5CFF] text-white shadow-md" : "text-[#9CA3AF] hover:text-white hover:bg-[#23314B]/50")">
+                    Калькулятор
+                </a>
+                <a href="/compare" class="px-4 py-2 rounded-lg text-sm font-medium transition-all @(path == "/Compare" ? "bg-[#2A5CFF] text-white shadow-md" : "text-[#9CA3AF] hover:text-white hover:bg-[#23314B]/50")">
+                    Порівняння
+                </a>
+                <a href="/salary" class="px-4 py-2 rounded-lg text-sm font-medium transition-all @(path == "/Salary" ? "bg-[#2A5CFF] text-white shadow-md" : "text-[#9CA3AF] hover:text-white hover:bg-[#23314B]/50")">
+                    Зарплата
+                </a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="flex-grow w-full max-w-5xl mx-auto px-4 py-12 relative z-10">
+        @RenderBody()
+    </main>
+
+    <footer class="border-t border-[#23314B] bg-[#05080F]/90 backdrop-blur-lg pt-12 pb-8 mt-auto relative z-10">
+        <div class="max-w-5xl mx-auto px-4">
+            <div class="grid md:grid-cols-2 gap-8 mb-8">
+                <div>
+                    <div class="flex items-center gap-2 mb-4">
+                        <div class="w-6 h-6 bg-[#FFD600] rounded-md flex items-center justify-center">
+                            <div class="w-0 h-0 border-l-[4px] border-r-[4px] border-b-[7px] border-transparent border-b-[#0A0F1C]"></div>
+                        </div>
+                        <span class="font-bold text-white tracking-wide">ФОП Калькулятор</span>
+                    </div>
+                    <p class="text-[#6B7280] text-sm leading-relaxed max-w-md">
+                        Цей сервіс створено виключно з інформаційною метою. Результати розрахунків не є офіційною податковою консультацією. Для прийняття фінансових рішень завжди звертайтеся до професійного бухгалтера.
+                    </p>
+                </div>
+
+                <div class="md:text-right">
+                    <h4 class="text-white font-semibold mb-4">Зв'язок з розробником</h4>
+                    <div class="space-y-3">
+                        <a href="https://t.me/YOUR_TELEGRAM" target="_blank" rel="noopener"
+                           class="inline-flex items-center gap-2 text-[#9CA3AF] hover:text-[#00A3FF] transition-colors text-sm">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z" />
+                            </svg>
+                            <span>@@YOUR_TELEGRAM</span>
+                        </a>
+                        <br />
+                        <a href="mailto:YOUR@EMAIL.COM"
+                           class="inline-flex items-center gap-2 text-[#9CA3AF] hover:text-white transition-colors text-sm">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                            <span>YOUR@EMAIL.COM</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="border-t border-[#23314B] pt-6 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-[#4B5E82]">
+                <p>&copy; @ViewData["CurrentYear"] ФОП Калькулятор. Всі права захищено.</p>
+                <div class="flex items-center gap-4">
+                    <a href="/sitemap.xml" class="hover:text-white transition-colors">Sitemap</a>
+                    <span>•</span>
+                    <p>Зроблено в Україні 🇺🇦</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

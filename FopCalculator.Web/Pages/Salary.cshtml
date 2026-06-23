@@ -1,0 +1,375 @@
+﻿@page
+@model FopCalculator.Web.Pages.SalaryModel
+@{
+    ViewData["Title"] = $"Калькулятор зарплати України {ViewData["CurrentYear"]} — Gross/Net розрахунок";
+    ViewData["Description"] = "Калькулятор зарплати. Розрахунок зарплати Gross та Net в Україні з урахуванням ПДФО, ВЗ та ЄСВ. ФОП vs найманець.";
+}
+
+<div x-data="salaryCalc()">
+
+    <div class="mb-8 text-center">
+        <h1 class="text-3xl md:text-4xl font-bold mb-3 text-white">Калькулятор зарплати @ViewData["CurrentYear"]</h1>
+        <p class="text-[#9CA3AF] text-lg">ПДФО 18% + Військовий збір 5% + ЄСВ 22%</p>
+    </div>
+
+    <div class="flex flex-wrap justify-center gap-2 mb-10 bg-[#162137] p-1.5 rounded-xl border border-[#23314B] w-fit mx-auto shadow-sm">
+        <button :class="tab === 'salary' ? 'bg-[#2A5CFF] text-white shadow-md' : 'text-[#9CA3AF] hover:text-white hover:bg-[#23314B]/50'"
+                class="px-6 py-2.5 rounded-lg text-sm font-bold transition-all"
+                @@click="tab = 'salary'">
+            💰 Зарплата
+        </button>
+        <button :class="tab === 'compare' ? 'bg-[#2A5CFF] text-white shadow-md' : 'text-[#9CA3AF] hover:text-white hover:bg-[#23314B]/50'"
+                class="px-6 py-2.5 rounded-lg text-sm font-bold transition-all"
+                @@click="tab = 'compare'">
+            ⚖️ ФОП vs Найманець
+        </button>
+    </div>
+
+    <div x-show="tab === 'salary'" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform scale-95" x-transition:enter-end="opacity-100 transform scale-100">
+        <div class="grid md:grid-cols-2 gap-6">
+
+            <div class="bg-[#162137] rounded-2xl p-6 md:p-8 border border-[#23314B] shadow-lg flex flex-col">
+                <h2 class="text-lg font-semibold mb-6 text-white flex items-center gap-2">
+                    <span class="text-[#FFD600]">⚙️</span> Параметри
+                </h2>
+
+                <div class="mb-6">
+                    <label class="block text-sm text-[#9CA3AF] mb-3">Що вводиш?</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button :class="mode === 'gross' ? 'bg-[#FFD600] text-[#0A0F1C] font-bold' : 'bg-[#0A0F1C] text-[#9CA3AF] border border-[#23314B] hover:border-[#4B5E82]'"
+                                class="py-4 rounded-xl text-sm transition-all flex flex-col items-center justify-center gap-1"
+                                @@click="mode = 'gross'; calculate()">
+                            <span class="text-base">Gross</span>
+                            <span class="text-[10px] uppercase tracking-wider opacity-70">до вирахування</span>
+                        </button>
+                        <button :class="mode === 'net' ? 'bg-[#FFD600] text-[#0A0F1C] font-bold' : 'bg-[#0A0F1C] text-[#9CA3AF] border border-[#23314B] hover:border-[#4B5E82]'"
+                                class="py-4 rounded-xl text-sm transition-all flex flex-col items-center justify-center gap-1"
+                                @@click="mode = 'net'; calculate()">
+                            <span class="text-base">Net</span>
+                            <span class="text-[10px] uppercase tracking-wider opacity-70">на руки</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-sm text-[#9CA3AF] mb-3">
+                        <span x-text="mode === 'gross' ? 'Gross зарплата (грн)' : 'Net зарплата (грн)'"></span>
+                    </label>
+                    <input type="number"
+                           x-model.number="amount"
+                           @@input="calculate()"
+                           placeholder="30000"
+                           class="w-full bg-[#0A0F1C] border border-[#23314B] rounded-xl px-4 py-4 text-white text-xl font-medium focus:outline-none focus:border-[#FFD600] focus:ring-1 focus:ring-[#FFD600] transition-all" />
+                </div>
+
+                <div class="bg-[#0A0F1C] rounded-xl p-5 border border-[#23314B] text-sm mt-auto">
+                    <div class="text-[#6B7280] font-bold text-xs uppercase tracking-wider mb-3">📋 Офіційні Ставки</div>
+                    <div class="space-y-2">
+                        <div class="flex justify-between">
+                            <span class="text-[#9CA3AF]">ПДФО</span>
+                            <span class="text-[#FFD600] font-bold">18%</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-[#9CA3AF]">Військовий збір</span>
+                            <span class="text-[#FFD600] font-bold">5%</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-[#9CA3AF]">ЄСВ (роботодавець)</span>
+                            <span class="text-[#FFD600] font-bold">22%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-[#162137] rounded-2xl p-6 md:p-8 border border-[#23314B] shadow-lg flex flex-col">
+                <h2 class="text-lg font-semibold mb-6 text-white flex items-center gap-2">
+                    <span class="text-[#00D07E]">📊</span> Результат
+                </h2>
+
+                <template x-if="salary">
+                    <div class="space-y-4 flex-grow flex flex-col">
+
+                        <div class="grid grid-cols-2 gap-3 mb-2">
+                            <div class="bg-[#0A0F1C] rounded-xl p-4 border border-[#23314B] text-center">
+                                <div class="text-xs text-[#6B7280] font-bold uppercase tracking-wider mb-1">Gross</div>
+                                <div class="text-lg font-bold text-white" x-text="formatMoney(salary.grossSalary)"></div>
+                            </div>
+                            <div class="bg-[#00D07E]/10 border border-[#00D07E]/30 rounded-xl p-4 text-center">
+                                <div class="text-xs text-[#00D07E] font-bold uppercase tracking-wider mb-1">Net (на руки)</div>
+                                <div class="text-xl font-black text-[#00D07E]" x-text="formatMoney(salary.netSalary)"></div>
+                            </div>
+                        </div>
+
+                        <div class="bg-[#0A0F1C] rounded-xl p-5 border border-[#23314B] space-y-3">
+                            <div class="text-xs text-[#6B7280] font-bold uppercase tracking-wide mb-3">Відрахування з зарплати</div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-[#9CA3AF]">ПДФО (18%)</span>
+                                <span class="text-[#FF3B30] font-medium" x-text="'— ' + formatMoney(salary.pdfo)"></span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-[#9CA3AF]">Військовий збір (5%)</span>
+                                <span class="text-[#FF3B30] font-medium" x-text="'— ' + formatMoney(salary.militaryTax)"></span>
+                            </div>
+                            <div class="border-t border-[#23314B] pt-3 mt-1 flex justify-between text-sm">
+                                <span class="text-white font-medium">Всього утримано</span>
+                                <span class="text-[#FF3B30] font-bold" x-text="'— ' + formatMoney(salary.totalDeductions)"></span>
+                            </div>
+                        </div>
+
+                        <div class="bg-[#FFD600]/10 border border-[#FFD600]/20 rounded-xl p-5 space-y-3 mt-auto">
+                            <div class="text-xs text-[#FFD600] opacity-80 font-bold uppercase tracking-wide mb-3">Для роботодавця</div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-white">ЄСВ зверху (22%)</span>
+                                <span class="text-[#FFD600] font-medium" x-text="'+ ' + formatMoney(salary.employerEsv)"></span>
+                            </div>
+                            <div class="border-t border-[#FFD600]/20 pt-3 mt-1 flex justify-between items-center">
+                                <span class="text-white font-medium">Повна вартість</span>
+                                <span class="text-[#FFD600] font-black text-lg" x-text="formatMoney(salary.totalCostForEmployer)"></span>
+                            </div>
+                        </div>
+
+                        <div class="bg-[#2A5CFF]/10 border border-[#2A5CFF]/30 rounded-xl p-4 flex justify-between items-center mt-2">
+                            <span class="text-[#9CA3AF] text-sm">Ефективна ставка податків</span>
+                            <span class="text-[#2A5CFF] font-bold text-lg" x-text="salary.effectiveRate + '%'"></span>
+                        </div>
+
+                    </div>
+                </template>
+                <template x-if="!salary">
+                    <div class="text-center text-[#6B7280] flex-grow flex flex-col items-center justify-center py-12">
+                        <div class="text-4xl mb-3">💼</div>
+                        <p>Введіть суму для розрахунку</p>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    <div x-show="tab === 'compare'" x-cloak x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform scale-95" x-transition:enter-end="opacity-100 transform scale-100">
+        <div class="grid md:grid-cols-2 gap-6">
+
+            <div class="bg-[#162137] rounded-2xl p-6 md:p-8 border border-[#23314B] shadow-lg flex flex-col">
+                <h2 class="text-lg font-semibold mb-6 text-white flex items-center gap-2">
+                    <span class="text-[#FFD600]">📝</span> Ваш дохід
+                </h2>
+
+                <div class="mb-6">
+                    <label class="block text-sm text-[#9CA3AF] mb-3">Річний дохід (грн)</label>
+                    <input type="number"
+                           x-model.number="compareIncome"
+                           @@input="calculateCompare()"
+                           placeholder="600000"
+                           class="w-full bg-[#0A0F1C] border border-[#23314B] rounded-xl px-4 py-4 text-white text-xl font-medium focus:outline-none focus:border-[#FFD600] focus:ring-1 focus:ring-[#FFD600] transition-all" />
+                    <p class="text-xs text-[#6B7280] mt-2 font-medium uppercase">
+                        ≈ <span x-text="formatMoney(compareIncome / 12)"></span> / місяць
+                    </p>
+                </div>
+
+                <div class="bg-[#0A0F1C] rounded-xl p-5 border border-[#23314B] text-sm text-[#9CA3AF] leading-relaxed mt-auto">
+                    <div class="text-[#6B7280] font-bold text-xs uppercase tracking-wider mb-3">Що порівнюємо?</div>
+                    <div class="flex items-start gap-3 mb-3">
+                        <div class="text-xl">👔</div>
+                        <div><strong class="text-white block">Найманець</strong> Беремо ваш дохід як Gross зарплату і віднімаємо 18% ПДФО та 5% ВЗ.</div>
+                    </div>
+                    <div class="flex items-start gap-3">
+                        <div class="text-xl">🏢</div>
+                        <div><strong class="text-white block">ФОП 3 група</strong> Беремо дохід і віднімаємо 5% ЄП, 1% ВЗ та фіксований ЄСВ.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-[#162137] rounded-2xl p-6 md:p-8 border border-[#23314B] shadow-lg flex flex-col">
+                <h2 class="text-lg font-semibold mb-6 text-white flex items-center gap-2">
+                    <span class="text-[#00D07E]">⚖️</span> Порівняння
+                </h2>
+
+                <template x-if="comparison">
+                    <div class="space-y-6 flex-grow flex flex-col">
+
+                        <div :class="comparison.isFopBetter ? 'bg-[#00D07E]/10 border-[#00D07E]/30' : 'bg-[#2A5CFF]/10 border-[#2A5CFF]/30'"
+                             class="rounded-xl p-5 border text-center transition-colors">
+                            <div class="text-3xl mb-2" x-text="comparison.isFopBetter ? '🏢' : '👔'"></div>
+                            <div class="font-bold text-xl text-white mb-1" x-text="comparison.isFopBetter ? 'ФОП значно вигідніше!' : 'Найманець вигідніше!'"></div>
+                            <div class="text-sm text-[#9CA3AF]">
+                                Різниця на вашу користь: <span :class="comparison.isFopBetter ? 'text-[#00D07E]' : 'text-[#2A5CFF]'" class="font-bold text-base" x-text="formatMoney(Math.abs(comparison.fopAdvantage))"></span> / рік
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4 mt-auto">
+
+                            <div class="bg-[#0A0F1C] rounded-xl p-5 border border-[#23314B] flex flex-col">
+                                <div class="text-xs text-[#6B7280] mb-3 font-bold uppercase tracking-wider text-center">👔 Найманець</div>
+                                <div class="space-y-2 text-xs flex-grow">
+                                    <div class="flex justify-between">
+                                        <span class="text-[#9CA3AF]">Gross</span>
+                                        <span class="text-white" x-text="formatMoney(comparison.asEmployee.grossSalary)"></span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-[#9CA3AF]">ПДФО</span>
+                                        <span class="text-[#FF3B30]" x-text="'— ' + formatMoney(comparison.asEmployee.pdfo)"></span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-[#9CA3AF]">ВЗ</span>
+                                        <span class="text-[#FF3B30]" x-text="'— ' + formatMoney(comparison.asEmployee.militaryTax)"></span>
+                                    </div>
+                                </div>
+                                <div class="border-t border-[#23314B] pt-3 mt-3">
+                                    <div class="flex justify-between font-bold text-sm mb-1">
+                                        <span class="text-white">На руки</span>
+                                        <span class="text-[#00D07E]" x-text="formatMoney(comparison.asEmployee.netSalary)"></span>
+                                    </div>
+                                    <div class="flex justify-between text-[#6B7280] text-[10px] uppercase">
+                                        <span>Ставка</span>
+                                        <span x-text="comparison.asEmployee.effectiveRate + '%'"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-[#0A0F1C] rounded-xl p-5 border border-[#23314B] flex flex-col">
+                                <div class="text-xs text-[#6B7280] mb-3 font-bold uppercase tracking-wider text-center">🏢 ФОП 3 гр.</div>
+                                <div class="space-y-2 text-xs flex-grow">
+                                    <div class="flex justify-between">
+                                        <span class="text-[#9CA3AF]">Дохід</span>
+                                        <span class="text-white" x-text="formatMoney(comparison.asFop.annualIncome)"></span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-[#9CA3AF]">ЄП 5%</span>
+                                        <span class="text-[#FF3B30]" x-text="'— ' + formatMoney(comparison.asFop.unifiedTaxAnnual)"></span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-[#9CA3AF]">ВЗ 1%</span>
+                                        <span class="text-[#FF3B30]" x-text="'— ' + formatMoney(comparison.asFop.militaryTaxAnnual)"></span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-[#9CA3AF]">ЄСВ</span>
+                                        <span class="text-[#FF3B30]" x-text="'— ' + formatMoney(comparison.asFop.esvAnnual)"></span>
+                                    </div>
+                                </div>
+                                <div class="border-t border-[#23314B] pt-3 mt-3">
+                                    <div class="flex justify-between font-bold text-sm mb-1">
+                                        <span class="text-white">Чистий</span>
+                                        <span class="text-[#00D07E]" x-text="formatMoney(comparison.asFop.netIncome)"></span>
+                                    </div>
+                                    <div class="flex justify-between text-[#6B7280] text-[10px] uppercase">
+                                        <span>Ставка</span>
+                                        <span x-text="comparison.asFop.effectiveRate + '%'"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </template>
+                <template x-if="!comparison">
+                    <div class="text-center text-[#6B7280] flex-grow flex flex-col items-center justify-center py-12">
+                        <div class="text-4xl mb-3">⚖️</div>
+                        <p>Введіть дохід для порівняння</p>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+    <style>
+        [x-cloak] {
+            display: none !important;
+        }
+    </style>
+    <script>
+        function salaryCalc() {
+            return {
+                tab: 'salary',
+                mode: 'gross',
+                amount: 30000,
+                salary: null,
+                compareIncome: 600000,
+                comparison: null,
+
+                async calculate() {
+                    if (!this.amount || this.amount <= 0) {
+                        this.salary = null;
+                        return;
+                    }
+                    const params = new URLSearchParams({
+                        amount: this.amount,
+                        mode: this.mode,
+                        year: @ViewData["CurrentYear"]
+                    });
+                    try {
+                        const r = await fetch(`/api/fop/salary?${params}`);
+                        if (r.ok) this.salary = await r.json();
+                    } catch (e) {
+                        console.error('Помилка:', e);
+                    }
+                },
+
+                async calculateCompare() {
+                    if (!this.compareIncome || this.compareIncome <= 0) {
+                        this.comparison = null;
+                        return;
+                    }
+                    const params = new URLSearchParams({
+                        income: this.compareIncome,
+                        year: @ViewData["CurrentYear"]
+                    });
+                    try {
+                        const r = await fetch(`/api/fop/fop-vs-employee?${params}`);
+                        if (r.ok) this.comparison = await r.json();
+                    } catch (e) {
+                        console.error('Помилка порівняння:', e);
+                    }
+                },
+
+                formatMoney(val) {
+                    if (val === null || val === undefined) return '—';
+                    return new Intl.NumberFormat('uk-UA', {
+                        style: 'currency', currency: 'UAH', maximumFractionDigits: 0
+                    }).format(val);
+                },
+
+                init() {
+                    this.calculate();
+                    this.calculateCompare();
+                }
+            }
+        }
+    </script>
+}
+
+@section SchemaOrg {
+    <script type="application/ld+json">
+        {
+            "@@context": "https://schema.org",
+            "@@type": "FAQPage",
+            "mainEntity": [
+                {
+                    "@@type": "Question",
+                    "name": "Скільки податків утримується із зарплати в Україні у @ViewData["CurrentYear"] році?",
+                    "acceptedAnswer": {
+                        "@@type": "Answer",
+                        "text": "З зарплати найманого працівника в Україні утримується 18% ПДФО та 5% військового збору. Роботодавець також сплачує 22% ЄСВ зверху. Разом це означає, що реальна вартість працівника для роботодавця на 22% більша за gross зарплату."
+                    }
+                },
+                {
+                    "@@type": "Question",
+                    "name": "Що таке Gross і Net зарплата?",
+                    "acceptedAnswer": {
+                        "@@type": "Answer",
+                        "text": "Gross (брутто) — зарплата до вирахування податків. Net (нетто) — сума яку працівник отримує на руки після утримання ПДФО (18%) та військового збору (5%). Для розрахунку скористайтеся нашим калькулятором."
+                    }
+                },
+                {
+                    "@@type": "Question",
+                    "name": "ФОП чи найманий працівник — що вигідніше?",
+                    "acceptedAnswer": {
+                        "@@type": "Answer",
+                        "text": "При однаковому доході ФОП 3 групи (5% + 1% ВЗ + ЄСВ) зазвичай вигідніший за найманого працівника (18% ПДФО + 5% ВЗ). Різниця може складати десятки тисяч гривень на рік. Порівняйте точні цифри у нашому калькуляторі."
+                    }
+                }
+            ]
+        }
+    </script>
+}
