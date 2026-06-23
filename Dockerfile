@@ -1,13 +1,12 @@
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
 WORKDIR /app
 EXPOSE 8080
 ENV ASPNETCORE_HTTP_PORTS=8080
 
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 
-# Копіюємо файли проєктів для відновлення залежностей (Restore)
 COPY ["FopCalculator.Web/FopCalculator.Web.csproj", "FopCalculator.Web/"]
 COPY ["FopCalculator.Application/FopCalculator.Application.csproj", "FopCalculator.Application/"]
 COPY ["FopCalculator.Domain/FopCalculator.Domain.csproj", "FopCalculator.Domain/"]
