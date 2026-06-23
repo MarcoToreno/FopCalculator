@@ -1,4 +1,4 @@
 ﻿User-agent: *
 Allow: /
 
-Sitemap: https://ВАШ_ДОМЕН/sitemap.xml
+Sitemap: https://fopcalculator-production.up.railway.app/
